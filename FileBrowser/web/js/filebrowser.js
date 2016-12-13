@@ -36,15 +36,19 @@ function FileBrowser() {
             data: {"address": dir.address},
             timeout: 10000,
             success: function(data) {
-                var subdirsJSON = JSON.parse(data);
-                subdirsJSON.forEach(function (item, i, subdirJSON) {
-                    item.loaded = false;
-                    item.id = guid();
-                    item.files = [];
+                if($("#" + dir.id).attr('class').match("collapsable") || dir.address == "Root") {
+                    var subdirsJSON = JSON.parse(data);
+                    subdirsJSON.forEach(function (item, i, subdirJSON) {
+                        item.loaded = false;
+                        item.id = guid();
+                        item.files = [];
 
-                    dir.files.push(item);
-                })
-                notifyJSONAccepted(dir);
+                        dir.files.push(item);
+                    })
+                    notifyObjectAccepted(dir);
+                } else{
+                    dir.loaded = false;
+                }
             },
             error: function () {
                 dir.loaded = false;
@@ -54,8 +58,8 @@ function FileBrowser() {
         });
     }
 
-    function notifyJSONAccepted(dirJSON) {
-        dirJSON.files.sort(function (a, b) {
+    function notifyObjectAccepted(dir) {
+        dir.files.sort(function (a, b) {
             if (a.dir && !b.dir) {
                 return -1;
             }
@@ -65,15 +69,15 @@ function FileBrowser() {
             return a.name.localeCompare(b.name)
         })
         
-        var $element = createElementByJson(dirJSON);
+        var $element = createElementByObject(dir);
 
-        $("#" + dirJSON.id + "ul").children().last().detach();
-        $("#" + dirJSON.id).append($element);
-        $("#" + dirJSON.id).treeview({
+        $("#" + dir.id + "ul").children().last().detach();
+        $("#" + dir.id).append($element);
+        $("#" + dir.id).treeview({
             add: $element
         });
 
-        dirJSON.files.forEach(function (item, i, arr) {
+        dir.files.forEach(function (item, i, arr) {
             $("#" + item.id).click(function (e) {
                 e.stopPropagation();
                 if($("#" + item.id).attr('class').match("collapsable")) {
@@ -89,27 +93,43 @@ function FileBrowser() {
         });
     }
 
-    function onDirClick(dirJSON) {
-        updateDir(dirJSON);
+    function onDirClick(dir) {
+        updateDir(dir);
     }
 
-    function createElementByJson(dirJSON) {
+    function createElementByObject(dir) {
         var element = "<ul>"
-        dirJSON.files.forEach(function(item, i, json) {
+        dir.files.forEach(function(item, i, json) {
+            var name = escapeHtml(item.name)
             if (item.name != ".." && item.name != "." && item.name != "....") {
                 if (item.dir) {
-                    element += "<li id=" + item.id + " class='closed'><span class='folder'>" + item.name + "</span>";
-                    if (item.readable) {
+                    element += "<li id=" + item.id + " class='closed'><span class='folder'>" + name + "</span>";
+                    if (item.readable && item.nchilds > 2) {
                         element += "<ul id=" + item.id + "ul" + "></ul>";
                     }
                     element += "</li>";
                 } else {
-                    element += "<li><span " + "id=" + item.id + " class='file'>" + item.name + "</span></li>";
+                    element += "<li><span " + "id=" + item.id + " class='file'>" + name + "</span></li>";
                 }
             }
         });
 
         element += "</ul>";
         return element;
+    }
+
+    var entityMap = {
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        '"': '&quot;',
+        "'": '&#39;',
+        "/": '&#x2F;'
+    };
+
+    function escapeHtml(string) {
+        return String(string).replace(/[&<>"'\/]/g, function (s) {
+            return entityMap[s];
+        });
     }
 }
